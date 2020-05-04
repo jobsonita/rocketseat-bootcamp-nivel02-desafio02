@@ -1,9 +1,12 @@
+/* eslint-disable no-restricted-syntax, no-await-in-loop */
+
 import { Router } from 'express';
 import multer from 'multer';
 import { getCustomRepository } from 'typeorm';
 
 import uploadConfig from '../config/upload';
 
+import Transaction from '../models/Transaction';
 import TransactionsRepository from '../repositories/TransactionsRepository';
 import CreateTransactionService from '../services/CreateTransactionService';
 import DeleteTransactionService from '../services/DeleteTransactionService';
@@ -49,13 +52,23 @@ transactionsRouter.delete('/:id', async (request, response) => {
 
 transactionsRouter.post(
   '/import',
-  upload.single('file'),
+  upload.array('files'),
   async (request, response) => {
     const importTransactions = new ImportTransactionsService();
 
-    const transactions = await importTransactions.execute({
-      filepath: request.file.path,
-    });
+    const files = request.files as Express.Multer.File[];
+
+    console.log(files);
+
+    let transactions: Transaction[] = [];
+
+    for (const file of files) {
+      const importedTransactions = await importTransactions.execute({
+        filepath: file.path,
+      });
+
+      transactions = [...transactions, ...importedTransactions];
+    }
 
     response.json(transactions);
   },
